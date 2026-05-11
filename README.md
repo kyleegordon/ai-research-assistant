@@ -6,7 +6,7 @@ Runs entirely on your machine — no API keys, no cloud services, no cost.
 
 ## Stack
 
-- **Frontend:** React + TypeScript (Vite)
+- **Frontend:** React + TypeScript (Vite) + MUI (Material UI)
 - **Backend:** Python + FastAPI
 - **Vector store:** ChromaDB (in-process)
 - **LLM + embeddings:** Ollama (local)
