@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { Box } from '@mui/material'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
 import { useStream } from '../../hooks/useStream'
-import styles from './ChatWindow.module.css'
 
 export type Message = {
   role: 'user' | 'assistant'
@@ -30,9 +30,9 @@ export default function ChatWindow() {
   }
 
   return (
-    <div className={styles.window}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
       <MessageList messages={messages} />
       <MessageInput onSubmit={handleSubmit} disabled={streaming} />
-    </div>
+    </Box>
   )
 }

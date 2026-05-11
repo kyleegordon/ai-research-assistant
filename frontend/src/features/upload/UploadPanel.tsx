@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material'
+import { CloudUpload } from '@mui/icons-material'
 import { uploadFile } from '../../api/client'
-import styles from './UploadPanel.module.css'
+import { gradientSx } from '../../theme'
 
 export default function UploadPanel() {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
@@ -24,21 +26,37 @@ export default function UploadPanel() {
   }
 
   return (
-    <div className={styles.panel}>
-      <h2 className={styles.heading}>Documents</h2>
-      <label className={styles.uploadLabel}>
+    <Box>
+      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+        Documents
+      </Typography>
+      <Button
+        component="label"
+        variant="contained"
+        fullWidth
+        disabled={status === 'uploading'}
+        startIcon={
+          status === 'uploading' ? <CircularProgress size={16} color="inherit" /> : <CloudUpload />
+        }
+        sx={{ ...gradientSx, borderRadius: 2, textTransform: 'none', py: 1.2 }}
+      >
+        {status === 'uploading' ? 'Uploading…' : 'Upload PDF or TXT'}
         <input
           type="file"
           accept=".pdf,.txt"
           onChange={handleChange}
           disabled={status === 'uploading'}
-          className={styles.input}
+          style={{ display: 'none' }}
         />
-        {status === 'uploading' ? 'Uploading…' : 'Upload PDF or TXT'}
-      </label>
+      </Button>
       {message && (
-        <p className={`${styles.message} ${styles[status]}`}>{message}</p>
+        <Alert
+          severity={status === 'done' ? 'success' : 'error'}
+          sx={{ mt: 1.5, borderRadius: 2 }}
+        >
+          {message}
+        </Alert>
       )}
-    </div>
+    </Box>
   )
 }

@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import styles from './MessageInput.module.css'
+import { Box, Button, TextField } from '@mui/material'
+import { Send } from '@mui/icons-material'
+import { gradientSx } from '../../theme'
 
 type Props = {
   onSubmit: (question: string) => void
@@ -18,17 +20,36 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
-      <input
-        className={styles.input}
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        display: 'flex',
+        gap: 1,
+        p: 2,
+        borderTop: 1,
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+      }}
+    >
+      <TextField
+        fullWidth
+        size="small"
         value={value}
         onChange={e => setValue(e.target.value)}
         placeholder="Ask a question about your documents…"
         disabled={disabled}
+        variant="outlined"
       />
-      <button className={styles.button} type="submit" disabled={disabled || !value.trim()}>
+      <Button
+        type="submit"
+        variant="contained"
+        disabled={disabled || !value.trim()}
+        endIcon={<Send />}
+        sx={{ ...gradientSx, borderRadius: 2, textTransform: 'none', px: 2.5, whiteSpace: 'nowrap' }}
+      >
         Send
-      </button>
-    </form>
+      </Button>
+    </Box>
   )
 }

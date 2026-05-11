@@ -10,7 +10,7 @@ A fullstack RAG (retrieval-augmented generation) web app. Users upload PDFs and 
 
 | Layer | Technology |
 |---|---|
-| Frontend | React + TypeScript (Vite) |
+| Frontend | React + TypeScript (Vite) + MUI (Material UI) |
 | Backend | Python + FastAPI |
 | Vector store | ChromaDB (in-process, no server) |
 | LLM + embeddings | Ollama (local) |
@@ -36,6 +36,7 @@ uvicorn main:app --reload          # starts API at http://localhost:8000
 ```bash
 cd frontend
 npm install
+npm install @mui/material @emotion/react @emotion/styled
 npm run dev                        # starts UI at http://localhost:5173
 npm run build                      # production build
 ```
@@ -84,3 +85,16 @@ If asked to implement any of the above, explain the concepts and tradeoffs inste
 - Vite/TypeScript config and environment setup
 - CSS styling and layout
 - Tests (once the core logic is written)
+
+## Frontend dev guidelines
+
+### UI library
+Use **MUI (Material UI)** for all UI components. Do not introduce other component libraries. Prefer MUI primitives (`Box`, `Stack`, `Typography`, `Button`, etc.) over raw HTML elements. Use the MUI `sx` prop for one-off style overrides; define a theme for global design tokens (colors, spacing, typography).
+
+### React best practices
+- **Components**: one component per file, named to match the filename. Keep components focused — if a component is doing more than one thing, split it.
+- **Reusability (DRY)**: before writing a new component or utility function, check if one already exists. Any UI pattern used in more than one place must be extracted into a shared component under `frontend/src/components/`. Any logic used in more than one place must be extracted into a custom hook (`frontend/src/hooks/`) or utility (`frontend/src/utils/`).
+- **Props over duplication**: pass data and callbacks as props rather than copy-pasting logic across components.
+- **State**: keep state as close to where it's used as possible. Lift state only when two or more sibling components need it. Avoid global state unless clearly necessary.
+- **No inline styles**: use the MUI `sx` prop or a theme — no `style={{}}` attributes, no raw CSS strings inline.
+- **TypeScript**: all components and functions must be fully typed. No `any`; use explicit prop interfaces.
