@@ -1,11 +1,32 @@
 # Write this yourself — core RAG component (vector search + ranking)
+import ollama
+import chromadb
 
 
-def retrieve_chunks(query: str, top_k: int = 5) -> list[dict]:
+def retrieve_chunks(query: str, top_k: int = 3) -> list[dict]:
     """
-    Steps to implement:
-    1. Embed the query string via Ollama
-    2. Query ChromaDB for the top_k most similar chunks
-    3. Return a list of dicts with keys: text, source, score (and any other metadata)
+    1. Embeds the query string via Ollama
+    2. Queries ChromaDB for the top_k most similar chunks
+    3. Returns a list of dicts with keys: text, source, score (and any other metadata)
     """
-    raise NotImplementedError
+
+    # Embed query string
+    embeddings_response = ollama.embed(
+    model='nomic-embed-text',
+    input=[query]
+    )
+
+    # Query ChromaDB for similar chunks
+    client = chromadb.PersistentClient(path="./chroma_db")
+    collection = client.get_or_create_collection("all-my-documents")
+
+    query_response = collection.query(
+        query_embeddings=[embeddings_response['embeddings'][0]],
+        n_results=top_k
+        )
+
+    results = []
+    for text, source, score in zip(query_response['documents'][0], query_response['metadatas'][0], query_response['distances'][0]):
+        results.append({"text": text, "source": source['source'], "score": score})
+
+    return results
