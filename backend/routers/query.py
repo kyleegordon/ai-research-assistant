@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from services.retrieval import retrieve_chunks
 from services.prompt import build_prompt
@@ -11,7 +11,7 @@ router = APIRouter()
 
 class QueryRequest(BaseModel):
     question: str
-    top_k: int = 5
+    top_k: int = Field(default=5, ge=1, le=20)
 
 
 @router.post("/query")
