@@ -1,12 +1,19 @@
-import { Box, Paper, Typography } from '@mui/material'
-import { ChatBubbleOutlined } from '@mui/icons-material'
+import { Avatar, Box, Paper, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import { ChatBubbleOutlined, Person, SmartToy } from '@mui/icons-material'
 import { keyframes } from '@mui/system'
 import type { Message } from './ChatWindow'
-import { gradientSx } from '../../theme'
+import { softShadow, solidAccentSx } from '../../theme'
+import CopyButton from './CopyButton'
 
 const bounce = keyframes`
   0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
   40% { transform: translateY(-4px); opacity: 1; }
+`
+
+const fadeSlideIn = keyframes`
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 `
 
 export default function MessageList({ messages }: { messages: Message[] }) {
@@ -39,64 +46,99 @@ export default function MessageList({ messages }: { messages: Message[] }) {
           </Typography>
         </Box>
       )}
-      {messages.map((msg, i) => (
-        <Box
-          key={i}
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
-          }}
-        >
-          <Typography variant="caption" sx={{ mb: 0.5, px: 1, color: 'text.secondary' }}>
-            {msg.role === 'user' ? 'You' : 'Assistant'}
-          </Typography>
-          <Paper
-            elevation={0}
-            sx={
-              msg.role === 'user'
-                ? {
-                    ...gradientSx,
-                    maxWidth: '75%',
-                    px: 2,
-                    py: 1.25,
-                    borderRadius: '18px 18px 4px 18px',
-                  }
-                : {
-                    maxWidth: '75%',
-                    px: 2,
-                    py: 1.25,
-                    borderRadius: '18px 18px 18px 4px',
-                    bgcolor: 'background.paper',
-                    border: 1,
-                    borderColor: 'divider',
-                  }
-            }
+      {messages.map((msg, i) => {
+        const showCopy = msg.role === 'assistant' && msg.content !== ''
+        return (
+          <Box
+            key={i}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              animation: `${fadeSlideIn} 0.3s ease`,
+            }}
           >
-            {msg.content === '' ? (
-              <Box sx={{ display: 'flex', gap: 0.5, py: 0.5 }}>
-                {[0, 1, 2].map(dot => (
-                  <Box
-                    key={dot}
-                    sx={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: '50%',
-                      bgcolor: 'text.secondary',
-                      animation: `${bounce} 1.4s ease-in-out infinite`,
-                      animationDelay: `${dot * 0.16}s`,
-                    }}
-                  />
-                ))}
-              </Box>
-            ) : (
-              <Typography variant="body2" sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {msg.content}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75, px: 1 }}>
+              <Avatar
+                sx={
+                  msg.role === 'user'
+                    ? { width: 20, height: 20, ...solidAccentSx }
+                    : {
+                        width: 20,
+                        height: 20,
+                        bgcolor: theme => alpha(theme.palette.primary.main, 0.12),
+                        color: 'primary.main',
+                      }
+                }
+              >
+                {msg.role === 'user' ? (
+                  <Person sx={{ fontSize: 13 }} />
+                ) : (
+                  <SmartToy sx={{ fontSize: 13 }} />
+                )}
+              </Avatar>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                {msg.role === 'user' ? 'You' : 'Assistant'}
               </Typography>
-            )}
-          </Paper>
-        </Box>
-      ))}
+            </Box>
+            <Paper
+              elevation={0}
+              sx={
+                msg.role === 'user'
+                  ? {
+                      ...solidAccentSx,
+                      maxWidth: '75%',
+                      px: 2,
+                      py: 1.25,
+                      borderRadius: '18px 18px 4px 18px',
+                      boxShadow: theme => softShadow[theme.palette.mode],
+                    }
+                  : {
+                      maxWidth: '75%',
+                      px: 2,
+                      py: 1.25,
+                      pr: showCopy ? 4 : 2,
+                      borderRadius: '18px 18px 18px 4px',
+                      bgcolor: 'background.paper',
+                      position: 'relative',
+                      boxShadow: theme => softShadow[theme.palette.mode],
+                      '&:hover .copy-button, &:focus-within .copy-button': { opacity: 1 },
+                    }
+              }
+            >
+              {msg.content === '' ? (
+                <Box sx={{ display: 'flex', gap: 0.5, py: 0.5 }}>
+                  {[0, 1, 2].map(dot => (
+                    <Box
+                      key={dot}
+                      sx={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        bgcolor: 'text.secondary',
+                        animation: `${bounce} 1.4s ease-in-out infinite`,
+                        animationDelay: `${dot * 0.16}s`,
+                      }}
+                    />
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {msg.content}
+                </Typography>
+              )}
+              {showCopy && (
+                <Box
+                  className="copy-button"
+                  sx={{ position: 'absolute', top: 4, right: 4, opacity: 0, transition: 'opacity 0.15s ease' }}
+                >
+                  <CopyButton text={msg.content} />
+                </Box>
+              )}
+            </Paper>
+          </Box>
+        )
+      })}
     </Box>
   )
 }

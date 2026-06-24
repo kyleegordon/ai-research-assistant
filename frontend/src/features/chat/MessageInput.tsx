@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Box, Button, TextField } from '@mui/material'
 import { Send } from '@mui/icons-material'
-import { gradientSx } from '../../theme'
+import { glassSx, gradientSx, shimmerSx } from '../../theme'
 
 type Props = {
   onSubmit: (question: string) => void
@@ -27,9 +27,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         display: 'flex',
         gap: 1,
         p: 2,
-        borderTop: 1,
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
+        ...glassSx('0 -1px 0'),
       }}
     >
       <TextField
@@ -46,7 +44,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         variant="contained"
         disabled={disabled || !value.trim()}
         endIcon={<Send />}
-        sx={{ ...gradientSx, borderRadius: 2, textTransform: 'none', px: 2.5, whiteSpace: 'nowrap' }}
+        sx={{ ...gradientSx, ...shimmerSx, borderRadius: 2, px: 2.5, whiteSpace: 'nowrap' }}
       >
         Send
       </Button>

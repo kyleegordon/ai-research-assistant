@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import upload, query
+from routers import upload, query, documents
 
 app = FastAPI(title="AI Research Assistant")
 
@@ -13,3 +13,4 @@ app.add_middleware(
 
 app.include_router(upload.router, prefix="/api")
 app.include_router(query.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
