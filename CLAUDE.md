@@ -86,6 +86,14 @@ If asked to implement any of the above, explain the concepts and tradeoffs inste
 - CSS styling and layout
 - Tests (once the core logic is written)
 
+## Issue tracking
+
+Pending work is tracked in Linear (team: **Ai-research-assistant**, e.g. `AI-12`). When completing work tied to a Linear issue:
+1. Move the issue to **Done** (or the appropriate status).
+2. Add a comment linking the commit hash that resolved it.
+
+Do this immediately after merging/pushing, before reporting the task complete — don't leave tickets stale in Backlog/In Progress once the code has landed.
+
 ## Frontend dev guidelines
 
 ### UI library
