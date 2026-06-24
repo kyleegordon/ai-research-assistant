@@ -1,14 +1,17 @@
 import os
-import shutil
 from fastapi import APIRouter, HTTPException, UploadFile, File
 
-from config import UPLOAD_DIR
+from config import MAX_UPLOAD_SIZE_BYTES, UPLOAD_DIR
 from services.documents import delete_document
 from services.ingest import ingest_document
 
 router = APIRouter()
 
 ALLOWED_TYPES = {"application/pdf", "text/plain"}
+
+# Read size for the chunked copy loop in upload_file(). Kept independent of
+# MAX_UPLOAD_SIZE_BYTES so the cap can change without affecting I/O granularity.
+UPLOAD_READ_CHUNK_BYTES = 1 * 1024 * 1024  # 1 MB
 
 
 @router.post("/upload")
@@ -33,8 +36,29 @@ async def upload_file(file: UploadFile = File(...)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     dest = os.path.join(UPLOAD_DIR, filename)
 
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    # Enforce the size cap against actual bytes read rather than the
+    # Content-Length header, which can be absent or spoofed/incorrect.
+    total_bytes = 0
+    try:
+        with open(dest, "wb") as f:
+            while True:
+                data = file.file.read(UPLOAD_READ_CHUNK_BYTES)
+                if not data:
+                    break
+                total_bytes += len(data)
+                if total_bytes > MAX_UPLOAD_SIZE_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(
+                            f'File "{filename}" exceeds the maximum upload size of '
+                            f"{MAX_UPLOAD_SIZE_BYTES} bytes."
+                        ),
+                    )
+                f.write(data)
+    except HTTPException:
+        if os.path.exists(dest):
+            os.remove(dest)
+        raise
 
     try:
         result = ingest_document(file_path=dest, filename=filename)

@@ -1,1 +1,2 @@
 UPLOAD_DIR = "./uploads"
+MAX_UPLOAD_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
