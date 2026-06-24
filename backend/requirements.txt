@@ -5,3 +5,5 @@ chromadb
 ollama
 python-dotenv
 pypdf
+pytest
+httpx
