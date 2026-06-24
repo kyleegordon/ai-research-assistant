@@ -4,6 +4,8 @@ import re
 import ollama
 import chromadb
 
+from config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, CHROMA_PATH
+
 def ingest_document(file_path: str, filename: str) -> dict:
     """
     1. Loads the file using pypdf for PDFs, open() for .txt
@@ -26,13 +28,14 @@ def ingest_document(file_path: str, filename: str) -> dict:
     sentences = re.split(r'(?<=[.!?])\s+', text)
 
     # Convert text to embeddings
-    embeddings_response = ollama.embed(
-        model='nomic-embed-text',
+    ollama_client = ollama.Client(host=OLLAMA_BASE_URL)
+    embeddings_response = ollama_client.embed(
+        model=OLLAMA_EMBED_MODEL,
         input=sentences
         )
 
     # Store embeddings in ChromaDB
-    client = chromadb.PersistentClient(path="./chroma_db")
+    client = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_or_create_collection("all-my-documents")
 
     collection.add(

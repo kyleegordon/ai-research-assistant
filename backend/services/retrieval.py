@@ -2,6 +2,8 @@
 import ollama
 import chromadb
 
+from config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, CHROMA_PATH
+
 
 def retrieve_chunks(query: str, top_k: int = 3) -> list[dict]:
     """
@@ -11,13 +13,14 @@ def retrieve_chunks(query: str, top_k: int = 3) -> list[dict]:
     """
 
     # Embed query string
-    embeddings_response = ollama.embed(
-    model='nomic-embed-text',
+    ollama_client = ollama.Client(host=OLLAMA_BASE_URL)
+    embeddings_response = ollama_client.embed(
+    model=OLLAMA_EMBED_MODEL,
     input=[query]
     )
 
     # Query ChromaDB for similar chunks
-    client = chromadb.PersistentClient(path="./chroma_db")
+    client = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_or_create_collection("all-my-documents")
 
     query_response = collection.query(

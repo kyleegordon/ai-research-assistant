@@ -3,11 +3,11 @@ from collections import Counter
 
 import chromadb
 
-from config import UPLOAD_DIR
+from config import CHROMA_PATH, UPLOAD_DIR
 
 
 def _get_collection():
-    client = chromadb.PersistentClient(path="./chroma_db")
+    client = chromadb.PersistentClient(path=CHROMA_PATH)
     return client.get_or_create_collection("all-my-documents")
 
 
