@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type DragEvent } from 'react'
 import { Alert, Box, Button, CircularProgress, Collapse, Paper, Typography } from '@mui/material'
 import { CloudUpload } from '@mui/icons-material'
 import { deleteDocument, listDocuments, uploadFile, type DocumentInfo } from '../../api/client'
@@ -9,8 +9,11 @@ const SUCCESS_ALERT_DURATION_MS = 4000
 
 type AlertState = { severity: 'success' | 'error'; message: string }
 
+type UploadOutcome = { filename: string; chunksIndexed: number }
+
 export default function UploadPanel() {
   const [uploading, setUploading] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const [alert, setAlert] = useState<AlertState | null>(null)
   const [alertOpen, setAlertOpen] = useState(false)
   const [documents, setDocuments] = useState<DocumentInfo[]>([])
@@ -41,26 +44,92 @@ export default function UploadPanel() {
     setAlertOpen(true)
   }
 
-  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setUploading(true)
-    setAlertOpen(false)
-
+  // Uploads a single file and applies its result to the document list.
+  // Returns the outcome on success, or null if the upload failed (the
+  // error is swallowed here so callers can keep processing the rest of
+  // a batch and report failures in one combined summary).
+  async function uploadOne(file: File): Promise<UploadOutcome | null> {
     try {
       const result = await uploadFile(file)
-      showAlert('success', `Indexed ${result.chunks_indexed} chunks from "${result.filename}"`)
       setDocuments(prev => {
         const next = { filename: result.filename, chunks: result.chunks_indexed }
         const idx = prev.findIndex(doc => doc.filename === result.filename)
         return idx === -1 ? [...prev, next] : prev.map((doc, i) => (i === idx ? next : doc))
       })
-    } catch (err) {
-      showAlert('error', err instanceof Error ? err.message : 'Upload failed. Check that the backend is running.')
-    } finally {
-      setUploading(false)
+      return { filename: result.filename, chunksIndexed: result.chunks_indexed }
+    } catch {
+      return null
     }
+  }
+
+  // Uploads files one at a time (sequential, not concurrent) and rolls
+  // the results up into a single summary alert.
+  async function uploadFiles(files: File[]) {
+    if (files.length === 0) return
+
+    setUploading(true)
+    setAlertOpen(false)
+
+    const succeeded: UploadOutcome[] = []
+    let failedCount = 0
+
+    for (const file of files) {
+      const outcome = await uploadOne(file)
+      if (outcome) {
+        succeeded.push(outcome)
+      } else {
+        failedCount += 1
+      }
+    }
+
+    setUploading(false)
+
+    if (files.length === 1) {
+      if (succeeded.length === 1) {
+        showAlert('success', `Indexed ${succeeded[0].chunksIndexed} chunks from "${succeeded[0].filename}"`)
+      } else {
+        showAlert('error', 'Upload failed. Check that the backend is running.')
+      }
+      return
+    }
+
+    if (succeeded.length === 0) {
+      showAlert('error', `Upload failed for all ${files.length} files. Check that the backend is running.`)
+      return
+    }
+
+    const totalChunks = succeeded.reduce((sum, doc) => sum + doc.chunksIndexed, 0)
+    const failureSuffix = failedCount > 0 ? ` (${failedCount} failed)` : ''
+    showAlert(
+      failedCount > 0 ? 'error' : 'success',
+      `Indexed ${succeeded.length} file${succeeded.length === 1 ? '' : 's'} (${totalChunks} chunks)${failureSuffix}`,
+    )
+  }
+
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    await uploadFiles(files)
+  }
+
+  function handleDragOver(e: DragEvent<HTMLElement>) {
+    e.preventDefault()
+    if (uploading) return
+    setIsDragOver(true)
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLElement>) {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  async function handleDrop(e: DragEvent<HTMLElement>) {
+    e.preventDefault()
+    setIsDragOver(false)
+    if (uploading) return
+
+    const files = Array.from(e.dataTransfer.files).filter(file => file.name.toLowerCase().endsWith('.pdf'))
+    await uploadFiles(files)
   }
 
   async function handleDelete(filename: string) {
@@ -92,24 +161,39 @@ export default function UploadPanel() {
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
         Documents
       </Typography>
-      <Button
-        component="label"
-        variant="contained"
-        fullWidth
-        disabled={uploading}
-        startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CloudUpload />}
-        sx={{ ...gradientSx, ...shimmerSx, borderRadius: 2, py: 1.2 }}
+      <Box
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        sx={{
+          borderRadius: 2,
+          transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+          ...(isDragOver && {
+            boxShadow: theme => `0 0 0 2px ${theme.palette.primary.main}`,
+            transform: 'scale(1.01)',
+          }),
+        }}
       >
-        {uploading ? 'Uploading…' : 'Upload PDF'}
-        <Box
-          component="input"
-          type="file"
-          accept=".pdf"
-          onChange={handleChange}
+        <Button
+          component="label"
+          variant="contained"
+          fullWidth
           disabled={uploading}
-          sx={{ display: 'none' }}
-        />
-      </Button>
+          startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CloudUpload />}
+          sx={{ ...gradientSx, ...shimmerSx, borderRadius: 2, py: 1.2 }}
+        >
+          {uploading ? 'Uploading…' : isDragOver ? 'Drop PDFs to upload' : 'Upload PDFs'}
+          <Box
+            component="input"
+            type="file"
+            accept=".pdf"
+            multiple
+            onChange={handleChange}
+            disabled={uploading}
+            sx={{ display: 'none' }}
+          />
+        </Button>
+      </Box>
       <Collapse in={alertOpen} onExited={() => setAlert(null)}>
         {alert && (
           <Alert severity={alert.severity} sx={{ mt: 1.5, borderRadius: 2 }}>
