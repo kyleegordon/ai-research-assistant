@@ -1,5 +1,5 @@
 import { Avatar, Box, Paper, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { alpha, type Theme } from '@mui/material/styles'
 import { ChatBubbleOutlined, Person, SmartToy } from '@mui/icons-material'
 import { keyframes } from '@mui/system'
 import type { Message } from './ChatWindow'
@@ -47,7 +47,7 @@ export default function MessageList({ messages }: { messages: Message[] }) {
         </Box>
       )}
       {messages.map((msg, i) => {
-        const showCopy = msg.role === 'assistant' && msg.content !== ''
+        const showCopy = msg.role === 'assistant' && msg.content !== '' && !msg.isError
         return (
           <Box
             key={i}
@@ -99,7 +99,10 @@ export default function MessageList({ messages }: { messages: Message[] }) {
                       py: 1.25,
                       pr: showCopy ? 4 : 2,
                       borderRadius: '18px 18px 18px 4px',
-                      bgcolor: 'background.paper',
+                      bgcolor: msg.isError
+                        ? (theme: Theme) => alpha(theme.palette.error.main, 0.08)
+                        : 'background.paper',
+                      border: msg.isError ? (theme: Theme) => `1px solid ${alpha(theme.palette.error.main, 0.3)}` : 'none',
                       position: 'relative',
                       boxShadow: theme => softShadow[theme.palette.mode],
                       '&:hover .copy-button, &:focus-within .copy-button': { opacity: 1 },
@@ -123,7 +126,14 @@ export default function MessageList({ messages }: { messages: Message[] }) {
                   ))}
                 </Box>
               ) : (
-                <Typography variant="body2" sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    color: msg.isError ? 'error.main' : undefined,
+                  }}
+                >
                   {msg.content}
                 </Typography>
               )}

@@ -50,11 +50,12 @@ export async function uploadFile(file: File): Promise<{ filename: string; chunks
   return res.json()
 }
 
-export async function queryStream(question: string, topK = 5): Promise<Response> {
+export async function queryStream(question: string, topK: number, signal?: AbortSignal): Promise<Response> {
   const res = await fetch(`${BASE}/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, top_k: topK }),
+    signal,
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))
   return res
