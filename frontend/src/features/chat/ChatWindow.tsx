@@ -24,7 +24,11 @@ function loadHistory(): Message[] {
   }
 }
 
-export default function ChatWindow() {
+interface Props {
+  clearChatRef: React.MutableRefObject<() => void>
+}
+
+export default function ChatWindow({ clearChatRef }: Props) {
   const [messages, setMessages] = useState<Message[]>(loadHistory)
   const { stream, streaming, stop } = useStream()
 
@@ -35,6 +39,12 @@ export default function ChatWindow() {
     const persistable = messages.filter(msg => msg.content !== '' || msg.isError)
     localStorage.setItem(HISTORY_KEY, JSON.stringify(persistable))
   }, [messages])
+
+  function handleClear() {
+    setMessages([])
+    localStorage.removeItem(HISTORY_KEY)
+  }
+  clearChatRef.current = handleClear
 
   async function handleSubmit(question: string) {
     setMessages(prev => [...prev, { role: 'user', content: question }])

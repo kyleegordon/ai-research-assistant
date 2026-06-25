@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { alpha, ThemeProvider } from '@mui/material/styles'
-import { AppBar, Box, CssBaseline, IconButton, Toolbar, Typography } from '@mui/material'
+import { AppBar, Box, Button, CssBaseline, IconButton, Toolbar, Typography } from '@mui/material'
 import { DarkMode, LightMode } from '@mui/icons-material'
 import UploadPanel from './features/upload/UploadPanel'
 import ChatWindow from './features/chat/ChatWindow'
@@ -9,6 +9,7 @@ import { buildTheme, glassSx, gradientSx } from './theme'
 export default function App() {
   const [mode, setMode] = useState<'light' | 'dark'>('light')
   const theme = useMemo(() => buildTheme(mode), [mode])
+  const clearChatRef = useRef<() => void>(() => {})
 
   return (
     <ThemeProvider theme={theme}>
@@ -44,12 +45,22 @@ export default function App() {
             >
               ResearchAI
             </Typography>
-            <IconButton
-              onClick={() => setMode(m => (m === 'light' ? 'dark' : 'light'))}
-              sx={{ color: 'text.secondary' }}
-            >
-              {mode === 'light' ? <DarkMode /> : <LightMode />}
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => clearChatRef.current()}
+                sx={{ color: 'text.secondary', borderColor: 'text.secondary' }}
+              >
+                Clear Chat
+              </Button>
+              <IconButton
+                onClick={() => setMode(m => (m === 'light' ? 'dark' : 'light'))}
+                sx={{ color: 'text.secondary' }}
+              >
+                {mode === 'light' ? <DarkMode /> : <LightMode />}
+              </IconButton>
+            </Box>
           </Toolbar>
         </AppBar>
 
@@ -67,7 +78,7 @@ export default function App() {
             <UploadPanel />
           </Box>
           <Box component="main" sx={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-            <ChatWindow />
+            <ChatWindow clearChatRef={clearChatRef} />
           </Box>
         </Box>
       </Box>
