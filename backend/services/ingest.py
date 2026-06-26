@@ -15,13 +15,18 @@ def ingest_document(file_path: str, filename: str) -> dict:
     5. Returns a summary dict
     """
 
-    # TODO Add text file logic
-
     # Load file and extract text
-    reader = PdfReader(file_path)
-    text = ""
-    for page in reader.pages:
-        text = text + page.extract_text()
+    if filename.endswith(".txt"):
+        with open(file_path, encoding='utf-8') as file:
+            text = file.read()   
+    elif filename.endswith(".pdf"):
+        reader = PdfReader(file_path)
+        text = ""
+        
+        for page in reader.pages:
+            text = text + page.extract_text()
+    else:
+        raise ValueError(f"Unsupported file type: {filename}")
 
     # Split text into chunks
     # TODO Upgrade to recursive chunking

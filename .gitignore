@@ -13,3 +13,4 @@ frontend/.env
 
 # General
 .DS_Store
+.claude/worktrees/

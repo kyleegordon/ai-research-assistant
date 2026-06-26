@@ -1,5 +1,5 @@
 import { useEffect, useState, type DragEvent } from 'react'
-import { Alert, Box, Button, CircularProgress, Collapse, Paper, Typography } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Collapse, Paper, Tooltip, Typography } from '@mui/material'
 import { CloudUpload } from '@mui/icons-material'
 import { deleteDocument, listDocuments, uploadFile, type DocumentInfo } from '../../api/client'
 import { gradientSx, shimmerSx, softShadow } from '../../theme'
@@ -128,7 +128,7 @@ export default function UploadPanel() {
     setIsDragOver(false)
     if (uploading) return
 
-    const files = Array.from(e.dataTransfer.files).filter(file => file.name.toLowerCase().endsWith('.pdf'))
+    const files = Array.from(e.dataTransfer.files).filter(file => file.name.toLowerCase().endsWith('.pdf') || file.name.toLowerCase().endsWith('.txt'))
     await uploadFiles(files)
   }
 
@@ -174,25 +174,29 @@ export default function UploadPanel() {
           }),
         }}
       >
-        <Button
-          component="label"
-          variant="contained"
-          fullWidth
-          disabled={uploading}
-          startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CloudUpload />}
-          sx={{ ...gradientSx, ...shimmerSx, borderRadius: 2, py: 1.2 }}
-        >
-          {uploading ? 'Uploading…' : isDragOver ? 'Drop PDFs to upload' : 'Upload PDFs'}
-          <Box
-            component="input"
-            type="file"
-            accept=".pdf"
-            multiple
-            onChange={handleChange}
-            disabled={uploading}
-            sx={{ display: 'none' }}
-          />
-        </Button>
+        <Tooltip title="Accepts .pdf and .txt files" placement="top">
+          <span style={{ display: 'block' }}>
+            <Button
+              component="label"
+              variant="contained"
+              fullWidth
+              disabled={uploading}
+              startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CloudUpload />}
+              sx={{ ...gradientSx, ...shimmerSx, borderRadius: 2, py: 1.2 }}
+            >
+              {uploading ? 'Uploading…' : isDragOver ? 'Drop to upload' : 'Upload'}
+              <Box
+                component="input"
+                type="file"
+                accept=".pdf,.txt"
+                multiple
+                onChange={handleChange}
+                disabled={uploading}
+                sx={{ display: 'none' }}
+              />
+            </Button>
+          </span>
+        </Tooltip>
       </Box>
       <Collapse in={alertOpen} onExited={() => setAlert(null)}>
         {alert && (
