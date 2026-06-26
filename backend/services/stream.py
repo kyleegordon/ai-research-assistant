@@ -12,7 +12,9 @@ async def stream_response(prompt: str) -> AsyncGenerator[str, None]:
     3. Yields "data: [DONE]\\n\\n" when the stream ends
     """
     client = ollama.AsyncClient(host=OLLAMA_BASE_URL)
-    async for chunk in await client.generate(model=OLLAMA_MODEL, prompt=prompt, stream=True):
-        yield f"data: {chunk.response}\n\n"
-
-    yield "data: [DONE]\n\n"
+    try:
+        async for chunk in await client.generate(model=OLLAMA_MODEL, prompt=prompt, stream=True):
+            yield f"data: {chunk.response}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception as e:
+        yield f"event: error\ndata: {str(e)}\n\n"

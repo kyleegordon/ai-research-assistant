@@ -60,6 +60,16 @@ export default function ChatWindow({ clearChatRef }: Props) {
           }
           return updated
         })
+      }, (errorMessage) => {
+        setMessages(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: errorMessage,
+            isError: true,
+          }
+          return updated
+        })
       })
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {

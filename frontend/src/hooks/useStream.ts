@@ -12,15 +12,15 @@ import { queryStream } from '../api/client'
 
 export function useStream() {
   const [streaming, setStreaming] = useState(false)
+
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  async function stream(question: string, onToken: (token: string) => void, topK = 5) {
+  async function stream(question: string, onToken: (token: string) => void, onError: (message: string) => void, topK = 5) {
     const controller = new AbortController()
     abortControllerRef.current = controller
     setStreaming(true)
     try {
       const response = await queryStream(question, topK, controller.signal)
-
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
@@ -34,6 +34,16 @@ export function useStream() {
         buffer = parts.pop()!
 
         for (const part of parts) {
+          const lines = part.split('\n')
+          const isError = lines.some(line => line === 'event: error')
+
+          if (isError) {
+            const dataLine = lines.find(line => line.startsWith('data:'))
+            const message = dataLine?.replace(/^data:[ ]?/, '') ?? 'Unknown error'
+            onError(message)
+            return
+          }
+
           const token = part.replace(/^data:[ ]?/, '')
           const trimmed = token.trim()
           if (!trimmed) continue
