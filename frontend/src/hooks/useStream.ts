@@ -41,6 +41,7 @@ export function useStream() {
             const dataLine = lines.find(line => line.startsWith('data:'))
             const message = dataLine?.replace(/^data:[ ]?/, '') ?? 'Unknown error'
             onError(message)
+            reader.cancel()
             return
           }
 

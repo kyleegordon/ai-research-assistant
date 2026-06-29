@@ -80,13 +80,14 @@ export default function App() {
               <UploadPanel />
             </Box>
           </Box>
-          <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', width: 16, flexShrink: 0 }}>
             <IconButton
               size="small"
               onClick={() => setSidebarOpen(o => !o)}
               sx={{
                 position: 'absolute',
-                left: -16,
+                left: '50%',
+                transform: 'translateX(-50%)',
                 zIndex: 1,
                 bgcolor: 'background.paper',
                 border: theme => `1px solid ${theme.palette.divider}`,

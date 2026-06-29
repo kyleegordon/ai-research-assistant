@@ -16,10 +16,10 @@ def ingest_document(file_path: str, filename: str) -> dict:
     """
 
     # Load file and extract text
-    if filename.endswith(".txt"):
+    if filename.lower().endswith(".txt"):
         with open(file_path, encoding='utf-8') as file:
-            text = file.read()   
-    elif filename.endswith(".pdf"):
+            text = file.read()
+    elif filename.lower().endswith(".pdf"):
         reader = PdfReader(file_path)
         text = ""
         

@@ -63,9 +63,10 @@ export default function ChatWindow({ clearChatRef }: Props) {
       }, (errorMessage) => {
         setMessages(prev => {
           const updated = [...prev]
+          const existing = updated[updated.length - 1].content
           updated[updated.length - 1] = {
             role: 'assistant',
-            content: errorMessage,
+            content: existing ? `${existing}\n\n${errorMessage}` : errorMessage,
             isError: true,
           }
           return updated

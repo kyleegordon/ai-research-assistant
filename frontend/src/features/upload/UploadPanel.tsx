@@ -178,7 +178,7 @@ export default function UploadPanel() {
         }}
       >
         <Tooltip title="Accepts .pdf and .txt files" placement="top">
-          <span style={{ display: 'block' }}>
+          <Box sx={{ display: 'block' }}>
             <Button
               component="label"
               variant="contained"
@@ -204,7 +204,7 @@ export default function UploadPanel() {
                 sx={{ display: 'none' }}
               />
             </Button>
-          </span>
+          </Box>
         </Tooltip>
       </Box>
       <Collapse in={alertOpen} onExited={() => setAlert(null)}>

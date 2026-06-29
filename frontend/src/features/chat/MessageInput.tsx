@@ -26,6 +26,7 @@ export default function MessageInput({ onSubmit, disabled, streaming, stop }: Pr
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.nativeEvent.isComposing) return
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       submit()
