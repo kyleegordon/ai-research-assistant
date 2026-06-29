@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { alpha, ThemeProvider } from '@mui/material/styles'
 import { AppBar, Box, Button, CssBaseline, IconButton, Toolbar, Typography } from '@mui/material'
-import { DarkMode, LightMode } from '@mui/icons-material'
+import { ChevronLeft, ChevronRight, DarkMode, LightMode } from '@mui/icons-material'
 import UploadPanel from './features/upload/UploadPanel'
 import ChatWindow from './features/chat/ChatWindow'
 import { buildTheme, glassSx, gradientSx } from './theme'
 
 export default function App() {
   const [mode, setMode] = useState<'light' | 'dark'>('light')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const theme = useMemo(() => buildTheme(mode), [mode])
   const clearChatRef = useRef<() => void>(() => {})
 
@@ -68,14 +69,35 @@ export default function App() {
           <Box
             component="aside"
             sx={{
-              width: 280,
+              width: sidebarOpen ? 280 : 0,
               flexShrink: 0,
               ...glassSx('1px 0 0'),
-              overflow: 'auto',
-              p: 3,
+              overflow: 'hidden',
+              transition: 'width 0.2s ease',
             }}
           >
-            <UploadPanel />
+            <Box sx={{ width: 280, overflow: 'auto', p: 3, height: '100%' }}>
+              <UploadPanel />
+            </Box>
+          </Box>
+          <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <IconButton
+              size="small"
+              onClick={() => setSidebarOpen(o => !o)}
+              sx={{
+                position: 'absolute',
+                left: -16,
+                zIndex: 1,
+                bgcolor: 'background.paper',
+                border: theme => `1px solid ${theme.palette.divider}`,
+                width: 24,
+                height: 24,
+                color: 'text.secondary',
+                '&:hover': { bgcolor: 'action.hover' },
+              }}
+            >
+              {sidebarOpen ? <ChevronLeft sx={{ fontSize: 16 }} /> : <ChevronRight sx={{ fontSize: 16 }} />}
+            </IconButton>
           </Box>
           <Box component="main" sx={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
             <ChatWindow clearChatRef={clearChatRef} />
