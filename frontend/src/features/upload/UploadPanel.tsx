@@ -13,6 +13,7 @@ type UploadOutcome = { filename: string; chunksIndexed: number }
 
 export default function UploadPanel() {
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [alert, setAlert] = useState<AlertState | null>(null)
   const [alertOpen, setAlertOpen] = useState(false)
@@ -73,8 +74,9 @@ export default function UploadPanel() {
     const succeeded: UploadOutcome[] = []
     let failedCount = 0
 
-    for (const file of files) {
-      const outcome = await uploadOne(file)
+    for (let i = 0; i < files.length; i++) {
+      setUploadProgress({ current: i + 1, total: files.length })
+      const outcome = await uploadOne(files[i])
       if (outcome) {
         succeeded.push(outcome)
       } else {
@@ -83,6 +85,7 @@ export default function UploadPanel() {
     }
 
     setUploading(false)
+    setUploadProgress(null)
 
     if (files.length === 1) {
       if (succeeded.length === 1) {
@@ -184,7 +187,13 @@ export default function UploadPanel() {
               startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CloudUpload />}
               sx={{ ...gradientSx, ...shimmerSx, borderRadius: 2, py: 1.2 }}
             >
-              {uploading ? 'Uploading…' : isDragOver ? 'Drop to upload' : 'Upload'}
+              {uploading
+                ? uploadProgress && uploadProgress.total > 1
+                  ? `Uploading ${uploadProgress.current} of ${uploadProgress.total}…`
+                  : 'Uploading…'
+                : isDragOver
+                  ? 'Drop to upload'
+                  : 'Upload'}
               <Box
                 component="input"
                 type="file"
