@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Avatar, Box, Paper, Typography } from '@mui/material'
 import { alpha, type Theme } from '@mui/material/styles'
 import { ChatBubbleOutlined, Person, SmartToy } from '@mui/icons-material'
@@ -5,6 +6,7 @@ import { keyframes } from '@mui/system'
 import type { Message } from './ChatWindow'
 import { softShadow, solidAccentSx } from '../../theme'
 import CopyButton from './CopyButton'
+import MarkdownContent from './MarkdownContent'
 
 const bounce = keyframes`
   0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
@@ -17,6 +19,12 @@ const fadeSlideIn = keyframes`
 `
 
 export default function MessageList({ messages }: { messages: Message[] }) {
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages])
+
   return (
     <Box
       sx={{
@@ -125,13 +133,14 @@ export default function MessageList({ messages }: { messages: Message[] }) {
                     />
                   ))}
                 </Box>
+              ) : msg.role === 'assistant' ? (
+                <MarkdownContent content={msg.content} isError={msg.isError} />
               ) : (
                 <Typography
                   variant="body2"
                   sx={{
                     lineHeight: 1.6,
                     whiteSpace: 'pre-wrap',
-                    color: msg.isError ? 'error.main' : undefined,
                   }}
                 >
                   {msg.content}
@@ -149,6 +158,7 @@ export default function MessageList({ messages }: { messages: Message[] }) {
           </Box>
         )
       })}
+      <div ref={bottomRef} />
     </Box>
   )
 }
