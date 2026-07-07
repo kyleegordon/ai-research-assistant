@@ -5,6 +5,8 @@ import chromadb
 
 from config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, CHROMA_PATH
 
+BATCH_SIZE = 300
+
 def ingest_document(file_path: str, filename: str) -> dict:
     """
     1. Loads the file using pypdf for PDFs, open() for .txt
@@ -32,10 +34,15 @@ def ingest_document(file_path: str, filename: str) -> dict:
 
     # Convert text to embeddings
     ollama_client = ollama.Client(host=OLLAMA_BASE_URL)
-    embeddings_response = ollama_client.embed(
-        model=OLLAMA_EMBED_MODEL,
-        input=chunks
-        )
+
+    all_embeddings = []
+    for i in range(0, len(chunks), BATCH_SIZE):
+        batch = chunks[i:(i+BATCH_SIZE)]
+        response = ollama_client.embed(
+            model=OLLAMA_EMBED_MODEL,
+            input=batch
+            )
+        all_embeddings.extend(response['embeddings'])
 
     # Store embeddings in ChromaDB
     client = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -45,7 +52,7 @@ def ingest_document(file_path: str, filename: str) -> dict:
       documents=chunks,
       metadatas=[{"source": filename, "chunk": i} for i, _ in enumerate(chunks)],
       ids=[f"{filename}_chunk_{i}" for i, _ in enumerate(chunks)],
-      embeddings=embeddings_response['embeddings']
+      embeddings=all_embeddings
     )                                                                                                                                                                                                                                                                                                                                                            
 
     return {"chunks_indexed": len(chunks)}
