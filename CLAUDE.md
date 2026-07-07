@@ -89,10 +89,11 @@ If asked to implement any of the above, explain the concepts and tradeoffs inste
 ## Issue tracking
 
 Pending work is tracked in Linear (team: **Ai-research-assistant**, e.g. `AI-12`). When completing work tied to a Linear issue:
-1. Move the issue to **Done** (or the appropriate status).
-2. Add a comment linking the commit hash that resolved it.
+1. Run `/feature-check <ticket-id>` — it diffs the ticket's branch against `main` and runs quality, security, and test checks on every changed file. Only proceed to step 2 if it reports the ticket as ready; if it flags issues, fix them (or get explicit sign-off to override) before continuing.
+2. Move the issue to **Done** (or the appropriate status).
+3. Add a comment linking the commit hash that resolved it.
 
-Do this immediately after merging/pushing, before reporting the task complete — don't leave tickets stale in Backlog/In Progress once the code has landed.
+Do this immediately after merging/pushing, before reporting the task complete — don't leave tickets stale in Backlog/In Progress once the code has landed, and don't move a ticket to Done on the strength of the status alone (see `/feature-check`'s notes on why Done status isn't proof the diff was ever verified).
 
 ## Frontend dev guidelines
 
