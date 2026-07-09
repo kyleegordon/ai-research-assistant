@@ -14,7 +14,7 @@ def build_prompt(query: str, chunks: list[dict]) -> str:
         return (
             "You have no relevant context available.\n\n"
             f"Question: {query}\n"
-            "Answer: I don't have enough context to answer this question."
+            "Answer: I don't know, the information could not be found."
         )
 
     # Format each chunk with source citation
@@ -26,11 +26,16 @@ def build_prompt(query: str, chunks: list[dict]) -> str:
         formatted_chunks.append(block)
 
     instruction = (
-        "You are a helpful research assistant. Answer the question using only the context below.\n"
-        "You MUST end every answer with a citation in this exact format: (Source: <filename>)\n"
-        "If the context does not contain the answer, say \"I don't know\" — do not cite in that case.\n\n"
+        "You are a helpful research assistant that only answers from the provided context. Answer directly with no preamble.\n"
+        "If the context contains the answer, provide a direct answer with a citation in this exact format: (Source: <filename>).\n"
+        "If the context does not contain the answer, state exactly \"I don't know, the information could not be found.\" \n\n"
     )
-    suffix = f"\n---\n\nQuestion: {query}\nAnswer:"
+    suffix = (
+        "\n---\n\nExample:\n"
+        "Question: What is the capital of France?\n"
+        "Answer: Paris is the capital of France. (Source: geography.pdf)\n\n"
+        f"\n---\n\nQuestion: {query}\nAnswer:"
+    )
 
     context_block = "\n".join(formatted_chunks)
     prompt = instruction + context_block + suffix
