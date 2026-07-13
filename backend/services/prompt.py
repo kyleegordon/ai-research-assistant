@@ -1,5 +1,6 @@
 # Write this yourself — core RAG component (prompt construction)
 
+MAX_PROMPT_TOKENS = 4096
 
 def build_prompt(query: str, chunks: list[dict]) -> str:
     """
@@ -9,13 +10,15 @@ def build_prompt(query: str, chunks: list[dict]) -> str:
     4. Returns the final prompt string
     """
 
-    # Handle empty chunks
-    if not chunks:
-        return (
+    no_context_msg = (
             "You have no relevant context available.\n\n"
             f"Question: {query}\n"
             "Answer: I don't know, the information could not be found."
         )
+
+    # Handle empty chunks
+    if not chunks:
+        return no_context_msg
 
     # Format each chunk with source citation
     formatted_chunks = []
@@ -37,7 +40,21 @@ def build_prompt(query: str, chunks: list[dict]) -> str:
         f"\n---\n\nQuestion: {query}\nAnswer:"
     )
 
-    context_block = "\n".join(formatted_chunks)
+    tokens_remaining = MAX_PROMPT_TOKENS - (len(instruction) //3) - (len(suffix) //3)
+    context_block = "\n"
+    total_chunks = 0
+
+    for chunk in formatted_chunks:
+        if tokens_remaining - (len(chunk) // 3) <= 0:
+            break
+        
+        context_block = f"{context_block} \n {chunk}"
+        total_chunks += 1
+        tokens_remaining = tokens_remaining - (len(chunk) // 3)
+
+    if total_chunks == 0:
+        return no_context_msg
+
     prompt = instruction + context_block + suffix
 
     return prompt
