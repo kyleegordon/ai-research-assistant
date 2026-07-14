@@ -3,6 +3,7 @@ import { Box } from '@mui/material'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
 import { useStream } from '../../hooks/useStream'
+import type { ChatMessage } from '../../api/client'
 
 export type Message = {
   role: 'user' | 'assistant'
@@ -47,6 +48,13 @@ export default function ChatWindow({ clearChatRef }: Props) {
   clearChatRef.current = handleClear
 
   async function handleSubmit(question: string) {
+    // Snapshot prior turns before appending this one — error bubbles and the
+    // empty streaming placeholder aren't real conversation content, so they're
+    // excluded from what gets sent as history.
+    const history: ChatMessage[] = messages
+      .filter(msg => msg.content !== '' && !msg.isError)
+      .map(({ role, content }) => ({ role, content }))
+
     setMessages(prev => [...prev, { role: 'user', content: question }])
     setMessages(prev => [...prev, { role: 'assistant', content: '' }])
 
@@ -71,7 +79,7 @@ export default function ChatWindow({ clearChatRef }: Props) {
           }
           return updated
         })
-      })
+      }, undefined, history)
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         // User clicked Stop — keep whatever partial text already streamed in.

@@ -50,11 +50,18 @@ export async function uploadFile(file: File): Promise<{ filename: string; chunks
   return res.json()
 }
 
-export async function queryStream(question: string, topK: number, signal?: AbortSignal): Promise<Response> {
+export type ChatMessage = {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+// `history` defaults last so the existing call site in the (hand-written)
+// useStream.ts keeps working until it's updated to pass conversation history.
+export async function queryStream(question: string, topK: number, signal?: AbortSignal, history: ChatMessage[] = []): Promise<Response> {
   const res = await fetch(`${BASE}/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, top_k: topK }),
+    body: JSON.stringify({ question, top_k: topK, history }),
     signal,
   })
   if (!res.ok) throw new Error(await parseErrorMessage(res))

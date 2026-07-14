@@ -4,6 +4,15 @@ import chromadb
 
 from config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, CHROMA_PATH
 
+def build_retrieval_query(question: str, history: list) -> str:
+    if not history:
+        return question
+
+    # last exchange only, most recent user+assistant pair.
+    recent = history[-2:]
+    context_str = " ".join(turn.content for turn in recent)
+
+    return f"{context_str} {question}"
 
 def retrieve_chunks(query: str, top_k: int = 3) -> list[dict]:
     """

@@ -1,6 +1,6 @@
 // Write this yourself — core RAG component (SSE streaming hook)
 import { useRef, useState } from 'react'
-import { queryStream } from '../api/client'
+import { queryStream, ChatMessage } from '../api/client'
 
 /**
  * 1. POSTs the question to /api/query (via queryStream) and reads the response as a stream
@@ -15,12 +15,18 @@ export function useStream() {
 
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  async function stream(question: string, onToken: (token: string) => void, onError: (message: string) => void, topK = 5) {
+  async function stream(
+    question: string, 
+    onToken: (token: string) => void, 
+    onError: (message: string) => void, 
+    topK = 5, 
+    history: ChatMessage[] = []
+  ) {
     const controller = new AbortController()
     abortControllerRef.current = controller
     setStreaming(true)
     try {
-      const response = await queryStream(question, topK, controller.signal)
+      const response = await queryStream(question, topK, controller.signal, history)
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
