@@ -5,9 +5,7 @@ import MessageInput from './MessageInput'
 import { useStream } from '../../hooks/useStream'
 import type { ChatMessage } from '../../api/client'
 
-export type Message = {
-  role: 'user' | 'assistant'
-  content: string
+export type Message = ChatMessage & {
   isError?: boolean
 }
 
@@ -48,12 +46,22 @@ export default function ChatWindow({ clearChatRef }: Props) {
   clearChatRef.current = handleClear
 
   async function handleSubmit(question: string) {
-    // Snapshot prior turns before appending this one — error bubbles and the
-    // empty streaming placeholder aren't real conversation content, so they're
-    // excluded from what gets sent as history.
-    const history: ChatMessage[] = messages
-      .filter(msg => msg.content !== '' && !msg.isError)
-      .map(({ role, content }) => ({ role, content }))
+    // Snapshot prior turns before appending this one. Every submit appends a
+    // user+assistant pair together, so `messages` is always [user, assistant,
+    // user, assistant, ...] — walk it in pairs and drop the whole exchange
+    // (not just the assistant half) when the reply errored or never streamed
+    // any content. Dropping only the assistant half would leave an orphaned
+    // user turn, breaking the strict user/assistant alternation that
+    // build_retrieval_query and the chat() messages list both rely on.
+    const history: ChatMessage[] = []
+    for (let i = 0; i + 1 < messages.length; i += 2) {
+      const userMsg = messages[i]
+      const assistantMsg = messages[i + 1]
+      if (assistantMsg.content !== '' && !assistantMsg.isError) {
+        history.push({ role: userMsg.role, content: userMsg.content })
+        history.push({ role: assistantMsg.role, content: assistantMsg.content })
+      }
+    }
 
     setMessages(prev => [...prev, { role: 'user', content: question }])
     setMessages(prev => [...prev, { role: 'assistant', content: '' }])

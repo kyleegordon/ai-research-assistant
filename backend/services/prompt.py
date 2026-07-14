@@ -61,7 +61,7 @@ def build_prompt(query: str, chunks: list[dict], history=[]) -> list[dict]:
         block = f"---\nSource: {chunk['source']}{page_str}\n\"{chunk['text']}\"\n"
         formatted_chunks.append(block)
 
-    tokens_remaining = MAX_PROMPT_TOKENS - estimate_tokens(instruction)
+    tokens_remaining = MAX_PROMPT_TOKENS - estimate_tokens(instruction) - estimate_tokens(query)
     context_block = "\n"
     total_chunks = 0
 
