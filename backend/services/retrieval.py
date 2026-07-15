@@ -2,7 +2,7 @@
 import ollama
 import chromadb
 
-from config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, CHROMA_PATH
+from config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, CHROMA_PATH, RELEVANCE_THRESHOLD
 
 def build_retrieval_query(question: str, history: list) -> str:
     if not history:
@@ -18,7 +18,7 @@ def retrieve_chunks(query: str, top_k: int = 3) -> list[dict]:
     """
     1. Embeds the query string via Ollama
     2. Queries ChromaDB for the top_k most similar chunks
-    3. Returns a list of dicts with keys: text, source, score (and any other metadata)
+    3. Returns a list of dicts filtered based on relevance score with keys: text, source, score (and any other metadata)
     """
 
     # Embed query string
@@ -39,6 +39,8 @@ def retrieve_chunks(query: str, top_k: int = 3) -> list[dict]:
 
     results = []
     for text, source, score in zip(query_response['documents'][0], query_response['metadatas'][0], query_response['distances'][0]):
+        if score > RELEVANCE_THRESHOLD:
+            continue
         results.append({"text": text, "source": source['source'], "score": score})
 
     return results
