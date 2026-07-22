@@ -16,21 +16,29 @@ def ingest_document(file_path: str, filename: str) -> dict:
     5. Returns a summary dict
     """
 
-    # Load file and extract text
+
+    # Load file and extract text chunks
     if filename.lower().endswith(".txt"):
         with open(file_path, encoding='utf-8') as file:
             text = file.read()
+            chunks = chunk_text(text, chunk_size=500, chunk_overlap=50, separators=["\n\n", "\n", ". ", " ", ""])
+            chunk_pages = [None] * len(chunks) # .txt has no page concept
     elif filename.lower().endswith(".pdf"):
         reader = PdfReader(file_path)
-        text = ""
-        
-        for page in reader.pages:
-            text = text + page.extract_text()
+        chunks = []
+        chunk_pages = []
+
+        for page_num, page in enumerate(reader.pages, start=1):
+            page_text = page.extract_text()
+
+            if page_text == "":
+                continue 
+
+            page_chunks = chunk_text(page_text, chunk_size=500, chunk_overlap=50, separators=["\n\n", "\n", ". ", " ", ""])
+            chunks.extend(page_chunks)
+            chunk_pages.extend([page_num] * len(page_chunks))
     else:
         raise ValueError(f"Unsupported file type: {filename}")
-
-    # Split text into chunks
-    chunks = chunk_text(text, chunk_size=500, chunk_overlap=50, separators=["\n\n", "\n", ". ", " ", ""])
 
     # Convert text to embeddings
     ollama_client = ollama.Client(host=OLLAMA_BASE_URL)
@@ -44,13 +52,20 @@ def ingest_document(file_path: str, filename: str) -> dict:
             )
         all_embeddings.extend(response['embeddings'])
 
+    metadatas = []
+    for i, chunk in enumerate(chunks):
+        meta = {"source": filename, "chunk": i}
+        if chunk_pages[i] is not None:
+            meta["page"] = chunk_pages[i]        # omit key entirely for .txt — don't set it to None
+        metadatas.append(meta)
+
     # Store embeddings in ChromaDB
     client = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_or_create_collection("all-my-documents")
 
     collection.add(
       documents=chunks,
-      metadatas=[{"source": filename, "chunk": i} for i, _ in enumerate(chunks)],
+      metadatas=metadatas,
       ids=[f"{filename}_chunk_{i}" for i, _ in enumerate(chunks)],
       embeddings=all_embeddings
     )                                                                                                                                                                                                                                                                                                                                                            
@@ -86,7 +101,14 @@ def chunk_text(text: str, chunk_size: int, chunk_overlap: int, separators: list[
             if len(buffer) + len(chunk) > chunk_size:
                 results.append(buffer)
                 # chunk_overlap=0 guard: -0 == 0 in Python, so buffer[-0:] returns the whole buffer and would duplicate all content
-                buffer = (buffer[-chunk_overlap:] if chunk_overlap else "") + chunk
+                tail = buffer[-chunk_overlap:] if chunk_overlap else ""
+
+                if tail:
+                    buffer = tail + separators[0] + chunk   # reinsert the separator that split() removed
+                else:
+                    buffer = chunk                          # nothing precedes chunk in this fresh buffer, no separator needed
+
+
             else:
                 # Rejoin with the separator
                 buffer = chunk if not buffer else buffer + separators[0] + chunk

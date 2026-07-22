@@ -38,9 +38,13 @@ def retrieve_chunks(query: str, top_k: int = 3) -> list[dict]:
         )
 
     results = []
-    for text, source, score in zip(query_response['documents'][0], query_response['metadatas'][0], query_response['distances'][0]):
+    for text, metadata, score in zip(query_response['documents'][0], query_response['metadatas'][0], query_response['distances'][0]):
         if score > RELEVANCE_THRESHOLD:
             continue
-        results.append({"text": text, "source": source['source'], "score": score})
 
+        result = {"text": text, "source": metadata["source"], "score": score}
+        if "page" in metadata:
+            result["page"] = metadata["page"]
+
+        results.append(result)
     return results
