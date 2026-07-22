@@ -153,3 +153,60 @@ class TestRetrieveChunksRelevanceFilter:
 
         assert len(result) == 1
         assert result[0]["score"] == 1.0
+
+
+class TestRetrieveChunksPageMetadata:
+    def test_page_key_included_when_present_in_metadata(
+        self, chroma_client, fake_query_embedding, monkeypatch
+    ):
+        monkeypatch.setattr(retrieval_module, "RELEVANCE_THRESHOLD", 1.0)
+        fake_query_embedding([1.0, 0.0, 0.0])
+        collection = chroma_client.get_or_create_collection("all-my-documents")
+        collection.add(
+            ids=["chunk"],
+            documents=["chunk text"],
+            metadatas=[{"source": "doc.pdf", "page": 3}],
+            embeddings=[[1.0, 0.0, 0.0]],
+        )
+
+        result = retrieve_chunks("anything", top_k=5)
+
+        assert result == [{"text": "chunk text", "source": "doc.pdf", "score": 0.0, "page": 3}]
+
+    def test_page_key_omitted_when_absent_from_metadata(
+        self, chroma_client, fake_query_embedding, monkeypatch
+    ):
+        # .txt chunks have no page concept, so ingest_document() never sets one
+        monkeypatch.setattr(retrieval_module, "RELEVANCE_THRESHOLD", 1.0)
+        fake_query_embedding([1.0, 0.0, 0.0])
+        collection = chroma_client.get_or_create_collection("all-my-documents")
+        collection.add(
+            ids=["chunk"],
+            documents=["chunk text"],
+            metadatas=[{"source": "notes.txt"}],
+            embeddings=[[1.0, 0.0, 0.0]],
+        )
+
+        result = retrieve_chunks("anything", top_k=5)
+
+        assert result == [{"text": "chunk text", "source": "notes.txt", "score": 0.0}]
+        assert "page" not in result[0]
+
+    def test_multiple_chunks_can_mix_paged_and_unpaged_sources(
+        self, chroma_client, fake_query_embedding, monkeypatch
+    ):
+        monkeypatch.setattr(retrieval_module, "RELEVANCE_THRESHOLD", 1.0)
+        fake_query_embedding([1.0, 0.0, 0.0])
+        collection = chroma_client.get_or_create_collection("all-my-documents")
+        collection.add(
+            ids=["pdf_chunk", "txt_chunk"],
+            documents=["from a pdf", "from a txt file"],
+            metadatas=[{"source": "doc.pdf", "page": 7}, {"source": "notes.txt"}],
+            embeddings=[[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+        )
+
+        result = retrieve_chunks("anything", top_k=5)
+
+        by_source = {r["source"]: r for r in result}
+        assert by_source["doc.pdf"]["page"] == 7
+        assert "page" not in by_source["notes.txt"]

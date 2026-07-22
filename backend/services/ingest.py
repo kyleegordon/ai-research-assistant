@@ -40,6 +40,9 @@ def ingest_document(file_path: str, filename: str) -> dict:
     else:
         raise ValueError(f"Unsupported file type: {filename}")
 
+    if not chunks:
+        return {"chunks_indexed": 0}
+
     # Convert text to embeddings
     ollama_client = ollama.Client(host=OLLAMA_BASE_URL)
 

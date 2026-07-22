@@ -1,9 +1,19 @@
-"""Tests for services/ingest.py: chunk_text().
+"""Tests for services/ingest.py: chunk_text() and ingest_document().
 
 chunk_text is a pure function with no external dependencies, so no mocking
 or fixtures are needed.
+
+ingest_document() does I/O (Ollama embeddings, ChromaDB, PdfReader), so its
+tests monkeypatch all three: chromadb.PersistentClient is swapped for a
+client pointed at a throwaway tmp_path collection, ollama.Client is swapped
+for a fake with a fixed-length embed(), and PdfReader is swapped for a fake
+built from a plain list of per-page text.
 """
-from services.ingest import chunk_text
+import chromadb
+import pytest
+
+import services.ingest as ingest_module
+from services.ingest import chunk_text, ingest_document
 
 SEPS = ["\n\n", "\n", ". ", " ", ""]
 
@@ -72,3 +82,105 @@ class TestChunkTextOverlap:
         result = chunk_text(text, chunk_size=100, chunk_overlap=0, separators=SEPS)
         total = sum(len(c) for c in result)
         assert total <= len(text) * 1.05  # no more than 5% overhead from separator rejoining
+
+
+@pytest.fixture
+def chroma_client(tmp_path, monkeypatch):
+    """Real chromadb PersistentClient backed by a throwaway temp directory,
+    substituted for the one ingest_document() would normally open at
+    CHROMA_PATH."""
+    client = chromadb.PersistentClient(path=str(tmp_path / "chroma_db"))
+    monkeypatch.setattr(ingest_module.chromadb, "PersistentClient", lambda path: client)
+    return client
+
+
+@pytest.fixture
+def fake_embed(monkeypatch):
+    """Swaps ollama.Client for a fake that returns one fixed-length embedding
+    per input chunk, so ingest_document() never makes a real network call."""
+    class FakeOllamaClient:
+        def embed(self, model, input):
+            return {"embeddings": [[0.0, 0.0, 0.0] for _ in input]}
+
+    monkeypatch.setattr(ingest_module.ollama, "Client", lambda host: FakeOllamaClient())
+
+
+@pytest.fixture
+def fake_pdf_reader(monkeypatch):
+    """Swaps PdfReader for a fake whose .pages are built from a plain list of
+    raw page texts, so tests control extracted text per page without needing
+    a real PDF file on disk."""
+    def _use(page_texts):
+        class FakePage:
+            def __init__(self, text):
+                self._text = text
+
+            def extract_text(self):
+                return self._text
+
+        class FakeReader:
+            def __init__(self, *_args, **_kwargs):
+                self.pages = [FakePage(t) for t in page_texts]
+
+        monkeypatch.setattr(ingest_module, "PdfReader", FakeReader)
+
+    return _use
+
+
+class TestIngestDocumentPageTracking:
+    def test_txt_chunks_have_no_page_key(self, tmp_path, chroma_client, fake_embed):
+        file_path = tmp_path / "notes.txt"
+        file_path.write_text("Just some short plain text content.", encoding="utf-8")
+
+        ingest_document(str(file_path), "notes.txt")
+
+        stored = chroma_client.get_or_create_collection("all-my-documents").get()
+        assert len(stored["ids"]) == 1
+        assert stored["metadatas"][0]["source"] == "notes.txt"
+        assert "page" not in stored["metadatas"][0]
+
+    def test_pdf_chunks_are_tagged_with_their_source_page(
+        self, tmp_path, chroma_client, fake_embed, fake_pdf_reader
+    ):
+        fake_pdf_reader(["Text from the first page.", "Text from the second page."])
+
+        ingest_document(str(tmp_path / "doc.pdf"), "doc.pdf")
+
+        stored = chroma_client.get_or_create_collection("all-my-documents").get()
+        pages = {meta["page"] for meta in stored["metadatas"]}
+        assert pages == {1, 2}
+        # each chunk's page should match the page its own text actually came from,
+        # not just "some page number got attached"
+        for doc, meta in zip(stored["documents"], stored["metadatas"]):
+            if "first page" in doc:
+                assert meta["page"] == 1
+            if "second page" in doc:
+                assert meta["page"] == 2
+
+    def test_blank_page_is_skipped_without_shifting_later_page_numbers(
+        self, tmp_path, chroma_client, fake_embed, fake_pdf_reader
+    ):
+        # Middle page extracts to "" (e.g. a scanned/image-only page)
+        fake_pdf_reader(["First page text.", "", "Third page text."])
+
+        ingest_document(str(tmp_path / "doc.pdf"), "doc.pdf")
+
+        stored = chroma_client.get_or_create_collection("all-my-documents").get()
+        pages = {meta["page"] for meta in stored["metadatas"]}
+        # page 2 produced no chunks and should not appear; page 3 keeps its real,
+        # unshifted page number rather than being renumbered to 2
+        assert pages == {1, 3}
+
+    def test_all_pages_blank_returns_zero_chunks_without_storing_anything(
+        self, tmp_path, chroma_client, fake_embed, fake_pdf_reader
+    ):
+        # Every page extracts to "" (e.g. a fully scanned/image-only PDF) ->
+        # chunks ends up [] and ingest_document() should short-circuit before
+        # ever calling collection.add() with empty documents/embeddings lists.
+        fake_pdf_reader(["", ""])
+
+        result = ingest_document(str(tmp_path / "doc.pdf"), "doc.pdf")
+
+        assert result == {"chunks_indexed": 0}
+        stored = chroma_client.get_or_create_collection("all-my-documents").get()
+        assert stored["ids"] == []
