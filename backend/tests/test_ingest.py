@@ -83,6 +83,40 @@ class TestChunkTextOverlap:
         total = sum(len(c) for c in result)
         assert total <= len(text) * 1.05  # no more than 5% overhead from separator rejoining
 
+    def test_overlap_tail_never_starts_mid_word(self):
+        # AI-29: chunk_overlap is a raw character count, so a naive tail slice
+        # (buffer[-chunk_overlap:]) can land inside a word instead of on a space.
+        # chunk_overlap here (5) is far smaller than the word, so if the tail
+        # isn't snapped to a word boundary, some chunk will start with a bare
+        # fragment like "docious" instead of the whole word or a space.
+        word = "supercalifragilisticexpialidocious"
+        text = f"{word} " * 20
+        result = chunk_text(text, chunk_size=40, chunk_overlap=5, separators=[" ", ""])
+        for chunk in result:
+            stripped = chunk.lstrip()
+            for cut in range(1, len(word)):
+                fragment = word[cut:]
+                assert not stripped.startswith(fragment) or stripped.startswith(word), (
+                    f"chunk starts mid-word: {chunk!r}"
+                )
+
+    def test_overlap_window_with_no_space_falls_back_to_no_overlap(self):
+        # When the overlap window is too small to contain any space (long
+        # unbroken token, or a tiny chunk_overlap), there's no boundary to
+        # snap to. The fix must fall back to dropping the tail rather than
+        # raising (tail.index(" ") would throw if no space is present).
+        text = ("supercalifragilisticexpialidocious " * 20)
+        result = chunk_text(text, chunk_size=40, chunk_overlap=5, separators=[" ", ""])
+        assert len(result) > 1
+
+    def test_zero_overlap_does_not_raise(self):
+        # chunk_overlap=0 -> tail is "" up front; a fix that unconditionally
+        # calls tail.index(" ") without checking for "" first would raise
+        # ValueError here instead of taking the existing no-overlap fallback.
+        text = "word " * 200
+        result = chunk_text(text, chunk_size=100, chunk_overlap=0, separators=SEPS)
+        assert len(result) > 1
+
 
 @pytest.fixture
 def chroma_client(tmp_path, monkeypatch):
