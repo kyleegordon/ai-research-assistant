@@ -106,7 +106,7 @@ def chunk_text(text: str, chunk_size: int, chunk_overlap: int, separators: list[
                 # chunk_overlap=0 guard: -0 == 0 in Python, so buffer[-0:] returns the whole buffer and would duplicate all content
                 tail = buffer[-chunk_overlap:] if chunk_overlap else ""
                 space_idx = tail.find(" ")
-                tail = tail[space_idx:] if space_idx != -1 else "" # trim to word boundary or drop if none found
+                tail = tail[space_idx+1:] if space_idx != -1 else "" # trim to word boundary or drop if none found
                 
                 if tail:
                     buffer = tail + separators[0] + chunk  # reinsert the separator that split() removed
