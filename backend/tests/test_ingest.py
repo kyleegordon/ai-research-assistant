@@ -183,13 +183,15 @@ class TestIngestDocumentPageTracking:
         stored = chroma_client.get_or_create_collection("all-my-documents").get()
         pages = {meta["page"] for meta in stored["metadatas"]}
         assert pages == {1, 2}
-        # each chunk's page should match the page its own text actually came from,
-        # not just "some page number got attached"
+        # content unique to page 2 should be tagged page 2
         for doc, meta in zip(stored["documents"], stored["metadatas"]):
-            if "first page" in doc:
-                assert meta["page"] == 1
             if "second page" in doc:
                 assert meta["page"] == 2
+        # AI-31: page 2's chunk is expected to also carry a seeded tail from page
+        # 1's text (so a fact split across the page boundary survives), so "first
+        # page" text legitimately appears in a page == 2 chunk too
+        page_2_docs = [doc for doc, meta in zip(stored["documents"], stored["metadatas"]) if meta["page"] == 2]
+        assert any("first page" in doc for doc in page_2_docs)
 
     def test_blank_page_is_skipped_without_shifting_later_page_numbers(
         self, tmp_path, chroma_client, fake_embed, fake_pdf_reader
