@@ -6,6 +6,8 @@ import chromadb
 from config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, CHROMA_PATH
 
 BATCH_SIZE = 300
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 50
 
 def ingest_document(file_path: str, filename: str) -> dict:
     """
@@ -21,22 +23,29 @@ def ingest_document(file_path: str, filename: str) -> dict:
     if filename.lower().endswith(".txt"):
         with open(file_path, encoding='utf-8') as file:
             text = file.read()
-            chunks = chunk_text(text, chunk_size=500, chunk_overlap=50, separators=["\n\n", "\n", ". ", " ", ""])
+            chunks = chunk_text(text, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, separators=["\n\n", "\n", ". ", " ", ""])
             chunk_pages = [None] * len(chunks) # .txt has no page concept
     elif filename.lower().endswith(".pdf"):
         reader = PdfReader(file_path)
         chunks = []
         chunk_pages = []
+        prev_page_text = ""
 
         for page_num, page in enumerate(reader.pages, start=1):
             page_text = page.extract_text()
+            original_page_text = page_text
 
             if page_text == "":
                 continue 
 
-            page_chunks = chunk_text(page_text, chunk_size=500, chunk_overlap=50, separators=["\n\n", "\n", ". ", " ", ""])
+            trimmed_tail = get_overlap_tail(prev_page_text, CHUNK_OVERLAP)
+            if trimmed_tail:
+                page_text = trimmed_tail + " " + page_text  # seed prior page's tail so a boundary-split fact survives
+
+            page_chunks = chunk_text(page_text, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, separators=["\n\n", "\n", ". ", " ", ""])
             chunks.extend(page_chunks)
             chunk_pages.extend([page_num] * len(page_chunks))
+            prev_page_text = original_page_text
     else:
         raise ValueError(f"Unsupported file type: {filename}")
 
@@ -75,6 +84,16 @@ def ingest_document(file_path: str, filename: str) -> dict:
 
     return {"chunks_indexed": len(chunks)}
 
+def trim_tail_to_word_boundary(text: str) -> str:
+    space_idx = text.find(" ")
+    return text[space_idx+1:] if space_idx != -1 else "" # trim to word boundary or drop if none found
+
+
+def get_overlap_tail(source: str, chunk_overlap: int) -> str:
+    # chunk_overlap=0 guard: -0 == 0 in Python, so source[-0:] returns the whole source and would duplicate all content
+    tail = source[-chunk_overlap:] if chunk_overlap else ""
+    return trim_tail_to_word_boundary(tail)
+
 
 def chunk_text(text: str, chunk_size: int, chunk_overlap: int, separators: list[str]) -> list[str]:
     """
@@ -103,17 +122,12 @@ def chunk_text(text: str, chunk_size: int, chunk_overlap: int, separators: list[
         if len(chunk) <= chunk_size:
             if len(buffer) + len(chunk) > chunk_size:
                 results.append(buffer)
-                # chunk_overlap=0 guard: -0 == 0 in Python, so buffer[-0:] returns the whole buffer and would duplicate all content
-                tail = buffer[-chunk_overlap:] if chunk_overlap else ""
-                space_idx = tail.find(" ")
-                tail = tail[space_idx+1:] if space_idx != -1 else "" # trim to word boundary or drop if none found
+                trimmed_tail = get_overlap_tail(buffer, chunk_overlap)
                 
-                if tail:
-                    buffer = tail + separators[0] + chunk  # reinsert the separator that split() removed
+                if trimmed_tail:
+                    buffer = trimmed_tail + separators[0] + chunk  # reinsert the separator that split() removed
                 else:
                     buffer = chunk  # nothing precedes chunk in this fresh buffer, no separator needed
-
-
             else:
                 # Rejoin with the separator
                 buffer = chunk if not buffer else buffer + separators[0] + chunk
@@ -121,7 +135,7 @@ def chunk_text(text: str, chunk_size: int, chunk_overlap: int, separators: list[
         if len(chunk) > chunk_size:
             if buffer:
                 results.append(buffer)
-                buffer = (buffer[-chunk_overlap:] if chunk_overlap else "")
+                buffer = get_overlap_tail(buffer, chunk_overlap)
             results.extend(chunk_text(chunk, chunk_size, chunk_overlap, separators[1:]))
 
     if buffer:
